@@ -4462,6 +4462,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "solidcraft-nav-extras"
+version = "0.40.0-rc.3"
+
+[[package]]
 name = "solidcraft-profile"
 version = "0.40.0-rc.3"
 dependencies = [
@@ -4572,6 +4576,7 @@ dependencies = [
  "solidcraft-control-egui",
  "solidcraft-engine",
  "solidcraft-gpu",
+ "solidcraft-nav-extras",
  "solidcraft-space-mouse",
  "solidcraft-theme",
  "solidcraft-ui-registry",

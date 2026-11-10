@@ -49,6 +49,9 @@ pub(super) fn mapping_rows(app: &SolveApp) -> Vec<(Vec<String>, String)> {
             (keys.into_iter().map(str::to_owned).collect::<Vec<_>>(), solidcraft_ui_text::tr(action).to_string())
         })
         .collect();
+    // A two-button preset (CATIA) reads as two extra rows: the anchor plus a side button, held or
+    // tapped. The rows are the chord machinery's own, in `crate::nav_extras`.
+    crate::nav_extras::legend_rows(app, &mut gestures);
     gestures.extend([
         (
             vec![app.tr("prefs.wheel").to_owned()],

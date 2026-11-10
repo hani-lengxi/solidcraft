@@ -40,6 +40,8 @@ solidcraft-control = { path = "crates/control" }
 solidcraft-control-egui = { path = "crates/control-egui" }
 solidcraft-derive = { path = "crates/derive" }
 solidcraft-3dx-client = { path = "crates/threedx-client" }
+# Navigation extensions that stay free of UI types: the chord ladder behind the CATIA preset.
+solidcraft-nav-extras = { path = "crates/nav-extras" }
 # The Rust port of NVIDIA's SMLib (Apache-2.0), the B-rep kernel behind crates/smlib. Vendored with
 # `git subtree` at solidcore: that tree is the source of truth, and
 # .github/workflows/solidcore-mirror.yml pushes changes in it back to its own repository (#13153).

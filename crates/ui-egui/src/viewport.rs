@@ -195,6 +195,13 @@ pub struct ViewportState {
     /// The mode the middle or right drag under way started with, kept until its button is
     /// released when `nav_drag_keeps_mode` is on (#9557).
     pub(crate) button_nav: Option<(crate::prefs::NavButton, Option<NavMode>)>,
+    /// A chord's side button has been pressed since its anchor went down (CATIA: the middle
+    /// button), so letting it go changes gear to zoom until it is pressed again. Cleared when the
+    /// anchor is let go.
+    pub(crate) chord_latched: bool,
+    /// Where the chord's anchor went down, for telling a click (which recentres the view) from a
+    /// drag that pans or turns it.
+    pub(crate) chord_press: Option<Pos2>,
     /// What a click would pick now (after the active command's filter).
     pub hover: Option<Hit>,
     /// The centre of the circle or arc of the sketch being edited whose edge was hovered last
@@ -5306,7 +5313,10 @@ pub fn show(app: &mut SolveApp, ui: &mut egui::Ui) {
         }
         // A right-click, unless the same press opened the mouse gestures' ring. egui's click
         // already allows the pointer a few points of travel, as a mouse moves while it is clicked.
-        if resp.secondary_clicked() && !crate::mouse_gesture::took_press(app) {
+        // Under a two-button preset (CATIA) the right button held with the anchor down turns the
+        // view: no menu opens under the hand.
+        let chord_right = crate::nav_extras::right_menu_blocked(app, ui);
+        if resp.secondary_clicked() && !crate::mouse_gesture::took_press(app) && !chord_right {
             if app.tool.is_some() {
                 crate::tools::finish(app);
             } else if app.dialog.is_none() {

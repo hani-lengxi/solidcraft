@@ -1005,6 +1005,13 @@ fn dispatch(app: &mut SolveApp, ctx: &egui::Context, method: &str, p: &Value) ->
             app.synthetic.push(egui::Event::ModifiersChanged(egui::Modifiers::NONE));
             app.synthetic.push(egui::Event::PointerMoved(a));
             app.synthetic.push(egui::Event::PointerButton { pos: a, button, pressed: true, modifiers });
+            // `chord`: a second button held down with the first for the whole drag (CATIA's middle
+            // plus a side button, which turns the view). `chord_tap`: the same button pressed and
+            // let go at once, which changes gear to zoom while the first button stays down. The
+            // events are the chord machinery's own, in `crate::nav_extras`.
+            let chord = s("chord").or_else(|| s("chord_tap")).map(str::to_owned);
+            let chord_tap = s("chord_tap").is_some();
+            crate::nav_extras::synthetic_chord_press(app, chord.as_deref(), chord_tap, a, modifiers);
             // `hold`: frames to keep the button down before moving (press-and-hold).
             for _ in 0..f("hold").unwrap_or(0.0).clamp(0.0, 600.0) as usize {
                 app.synthetic.push(egui::Event::PointerMoved(a));
@@ -1031,6 +1038,8 @@ fn dispatch(app: &mut SolveApp, ctx: &egui::Context, method: &str, p: &Value) ->
             for _ in 0..f("hold_end").unwrap_or(0.0).clamp(0.0, 600.0) as usize {
                 app.synthetic.push(egui::Event::PointerMoved(z));
             }
+            // A held side button is let go before the first one, as a hand would.
+            crate::nav_extras::synthetic_chord_release(app, chord.as_deref(), chord_tap, z, modifiers);
             app.synthetic.push(egui::Event::PointerButton { pos: z, button, pressed: false, modifiers });
             ok(Value::Null)
         }

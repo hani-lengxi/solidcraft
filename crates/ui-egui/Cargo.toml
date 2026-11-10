@@ -23,6 +23,8 @@ egui = { workspace = true }
 egui-wgpu = { workspace = true }
 solidcraft-gpu = { workspace = true }
 solidcraft-space-mouse = { workspace = true, features = ["serde"] }
+# The chord ladder behind the CATIA navigation preset, kept free of UI types.
+solidcraft-nav-extras = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 log = { workspace = true }

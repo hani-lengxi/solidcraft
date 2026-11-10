@@ -86,6 +86,10 @@ const fn bind(button: NavButton, keys: NavKeys, mode: NavMode) -> NavBinding {
     NavBinding { button, keys, mode }
 }
 
+/// A two-button navigation (CATIA's mouse), defined in [`crate::nav_extras`] beside the rest of
+/// the chord machinery: its ladder lives in `solidcraft-nav-extras`, its gears here.
+pub use crate::nav_extras::NavChord;
+
 /// A mouse mapping: its bindings, most specific first (the first one whose button is dragged
 /// with all its keys held wins).
 pub struct NavPreset {
@@ -101,6 +105,8 @@ pub struct NavPreset {
     pub middle_double_click: Option<&'static str>,
     /// Choosing the preset sets "Right drag orbits" (`None` leaves it as it is).
     pub right_drag_orbits: Option<bool>,
+    /// A two-button ladder on top of the bindings (`None`: a plain one-button preset).
+    pub chord: Option<NavChord>,
     pub bindings: &'static [NavBinding],
 }
 
@@ -108,6 +114,13 @@ impl NavPreset {
     /// What dragging `button` with `mods` held does, if anything.
     pub fn mode(&self, button: NavButton, mods: Modifiers) -> Option<NavMode> {
         self.bindings.iter().find(|b| b.button == button && b.keys.held(mods)).map(|b| b.mode)
+    }
+
+    /// The mode of a drag of this preset's anchor button, with the chord's gear applied: `None`
+    /// for a one-button preset, or for a button that is not the chord's anchor.
+    pub fn chord_mode(&self, button: NavButton, side_down: bool, latched: bool, mods: Modifiers) -> Option<NavMode> {
+        let chord = self.chord.filter(|chord| chord.is_anchor(button))?;
+        chord.mode(side_down, latched, self.mode(button, mods))
     }
 }
 
@@ -124,6 +137,7 @@ pub const NAV_PRESETS: &[NavPreset] = &[
         reverse_drag_zoom: false,
         middle_double_click: None,
         right_drag_orbits: None,
+        chord: None,
         bindings: &[bind(Middle, NavKeys::SHIFT, Orbit), bind(Middle, NavKeys::NONE, Pan), bind(Right, NavKeys::NONE, Orbit)],
     },
     NavPreset {
@@ -135,6 +149,7 @@ pub const NAV_PRESETS: &[NavPreset] = &[
         // Picked here, the right button is left to the context menu and mouse gestures (#6492).
         middle_double_click: Some("fit"),
         right_drag_orbits: Some(false),
+        chord: None,
         bindings: &[
             bind(Middle, NavKeys::CTRL, Pan),
             bind(Middle, NavKeys::SHIFT, Zoom),
@@ -152,7 +167,21 @@ pub const NAV_PRESETS: &[NavPreset] = &[
         reverse_drag_zoom: true,
         middle_double_click: None,
         right_drag_orbits: None,
+        chord: None,
         bindings: &[bind(Middle, NavKeys::CTRL, Zoom), bind(Middle, NavKeys::SHIFT, Pan), bind(Middle, NavKeys::NONE, Orbit)],
+    },
+    // CATIA V5's mouse, defined in `crate::nav_extras` over the ladder in `solidcraft-nav-extras`.
+    NavPreset {
+        id: "catia",
+        label: "CATIA",
+        help: "Middle drag pans; hold middle and hold left or right to orbit; press and release that side button with middle still held to zoom; Shift+middle orbits and Ctrl+middle zooms; middle double-click fits, a middle click centres the view",
+        reverse_zoom: false,
+        // CATIA zooms in by pushing the pointer away, which is the drag up this build already does.
+        reverse_drag_zoom: false,
+        middle_double_click: Some("fit"),
+        right_drag_orbits: None,
+        chord: Some(crate::nav_extras::catia_chord()),
+        bindings: &[bind(Middle, NavKeys::SHIFT, Orbit), bind(Middle, NavKeys::CTRL, Zoom), bind(Middle, NavKeys::NONE, Pan)],
     },
     NavPreset {
         id: "nx",
@@ -165,6 +194,7 @@ pub const NAV_PRESETS: &[NavPreset] = &[
         reverse_drag_zoom: false,
         middle_double_click: Some("fit"),
         right_drag_orbits: Some(false),
+        chord: None,
         bindings: &[bind(Middle, NavKeys::SHIFT, Pan), bind(Middle, NavKeys::CTRL, Zoom), bind(Middle, NavKeys::NONE, Orbit)],
     },
     NavPreset {
@@ -175,6 +205,7 @@ pub const NAV_PRESETS: &[NavPreset] = &[
         reverse_drag_zoom: false,
         middle_double_click: None,
         right_drag_orbits: None,
+        chord: None,
         bindings: &[
             bind(Middle, NavKeys::SHIFT, Orbit),
             bind(Middle, NavKeys::CTRL, Zoom),
@@ -190,6 +221,7 @@ pub const NAV_PRESETS: &[NavPreset] = &[
         reverse_drag_zoom: false,
         middle_double_click: None,
         right_drag_orbits: None,
+        chord: None,
         bindings: &[
             bind(Left, NavKeys::SHIFT_ALT, Orbit),
             bind(Middle, NavKeys::SHIFT_ALT, Pan),
@@ -207,6 +239,7 @@ pub const NAV_PRESETS: &[NavPreset] = &[
         reverse_drag_zoom: false,
         middle_double_click: None,
         right_drag_orbits: None,
+        chord: None,
         bindings: &[
             bind(Left, NavKeys::ALT, Orbit),
             bind(Middle, NavKeys::ALT, Pan),
@@ -222,6 +255,7 @@ pub const NAV_PRESETS: &[NavPreset] = &[
         reverse_drag_zoom: false,
         middle_double_click: None,
         right_drag_orbits: None,
+        chord: None,
         bindings: &[bind(Middle, NavKeys::SHIFT, Pan), bind(Middle, NavKeys::CTRL, Zoom), bind(Middle, NavKeys::NONE, Orbit)],
     },
     NavPreset {
@@ -232,6 +266,7 @@ pub const NAV_PRESETS: &[NavPreset] = &[
         reverse_drag_zoom: false,
         middle_double_click: None,
         right_drag_orbits: None,
+        chord: None,
         bindings: &[bind(Right, NavKeys::SHIFT, Pan), bind(Right, NavKeys::NONE, Orbit), bind(Middle, NavKeys::NONE, Pan)],
     },
     NavPreset {
@@ -242,6 +277,7 @@ pub const NAV_PRESETS: &[NavPreset] = &[
         reverse_drag_zoom: false,
         middle_double_click: None,
         right_drag_orbits: None,
+        chord: None,
         bindings: &[
             bind(Left, NavKeys::NONE, Orbit),
             bind(Right, NavKeys::SHIFT, Zoom),
@@ -260,6 +296,7 @@ pub const NAV_PRESETS: &[NavPreset] = &[
         right_drag_orbits: None,
         // Ctrl+left orbit is the drag from empty space every preset has: as a binding it would
         // also take a Ctrl+click on geometry, which adds to the selection.
+        chord: None,
         bindings: &[bind(Left, NavKeys::SHIFT_ALT, Zoom), bind(Left, NavKeys::ALT, Pan)],
     },
     NavPreset {
@@ -270,6 +307,7 @@ pub const NAV_PRESETS: &[NavPreset] = &[
         reverse_drag_zoom: false,
         middle_double_click: None,
         right_drag_orbits: None,
+        chord: None,
         bindings: &[bind(Middle, NavKeys::NONE, Pan), bind(Right, NavKeys::NONE, Orbit)],
     },
 ];
@@ -2334,6 +2372,9 @@ pub fn nav_mode(app: &SolveApp, button: NavButton, mods: Modifiers) -> Option<Na
     }
     mode
 }
+
+// The chord's helpers (`chord_takes_right`, `chord_anchor`) live in `crate::nav_extras` with the
+// rest of the chord machinery.
 
 /// +1, or −1 when horizontal scrolling pans the other way (#2007).
 pub fn pan_sign_x(app: &SolveApp) -> f32 {

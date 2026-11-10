@@ -579,7 +579,7 @@ pub(crate) fn handle(app: &mut SolveApp, ui: &mut egui::Ui, rect: Rect, resp: &e
     let input_rect = rect;
     let rect = crate::render_workspace::camera_rect(app, rect);
     let picking = caps.pick;
-    let (hover, scroll, mods, middle, secondary_down, primary_down, primary_pressed, primary_released, delta) = ui.input(|i| {
+    let (hover, scroll, mods, middle, secondary_raw, primary_down, primary_pressed, primary_released, delta) = ui.input(|i| {
         (
             i.pointer.hover_pos(),
             i.smooth_scroll_delta.y,
@@ -595,7 +595,7 @@ pub(crate) fn handle(app: &mut SolveApp, ui: &mut egui::Ui, rect: Rect, resp: &e
     let hover = hover.filter(|p| !crate::frame::dock_dragging(ui.ctx()) && !crate::shell::covered(app, *p));
     let delta = unwrapped_delta(app, delta);
     // The right button belongs to the marking menu while it is open.
-    let secondary_down = secondary_down && app.viewport.context_menu.is_none();
+    let secondary_down = secondary_raw && app.viewport.context_menu.is_none();
     // The axis view handles its own clicks; the model underneath must not see them.
     let axes = if caps.orbit { axis_rect(app, input_rect) } else { Rect::NOTHING };
     // So is the View angles readout under it (#6032).
@@ -625,6 +625,9 @@ pub(crate) fn handle(app: &mut SolveApp, ui: &mut egui::Ui, rect: Rect, resp: &e
     app.viewport.mouse = hover.filter(|_| inside);
     // Sketch snap suppression is set once in `viewport::show` from preferences.
     middle_double_click(app, ui, inside);
+    // CATIA's middle click: the point under the pointer comes to the middle of the view, which is
+    // also what the next orbit turns about. A double-click (Home or Fit) keeps its own meaning.
+    crate::nav_extras::middle_click_recentre(app, ui, inside, rect);
     // The 3D mouse's motion this frame, with what this page's camera may do.
     device(app, rect, caps);
 
@@ -806,16 +809,24 @@ pub(crate) fn handle(app: &mut SolveApp, ui: &mut egui::Ui, rect: Rect, resp: &e
     // left one does (`primary_nav`): letting go of Shift partway through a Shift+middle orbit
     // doesn't turn the rest into a pan (#9557). Off in Preferences, the keys held decide on every
     // frame, as before.
+    // CATIA's two-button ladder, when the preset carries one: while the anchor is down, a side
+    // button held turns the view and let go, with the anchor still down, zooms. The gear changes
+    // under a hand that never lifts the anchor, at any point of the drag; the ladder and its
+    // latch live in `crate::nav_extras` over `solidcraft-nav-extras`. The same call carries the
+    // plain binding table's memory (`nav_drag_keeps_mode`) when the preset has no chord.
+    let chord = crate::nav_extras::chord_anchor(app);
+    let side_down = crate::nav_extras::side_down(chord, primary_down, middle, secondary_raw);
     let button_mode = match button {
         Some(b) if dragging && app.viewport.axis_drag.is_none() => {
-            let kept = app.viewport.button_nav.filter(|(held, _)| *held == b && app.preferences.nav_drag_keeps_mode);
-            let mode = kept.map_or_else(|| crate::prefs::nav_mode(app, b, mods), |(_, mode)| mode);
+            let mode = crate::nav_extras::drag_mode(app, b, chord, side_down, mods);
             app.viewport.button_nav = Some((b, mode));
             mode
         }
         Some(_) => None,
         None => {
             app.viewport.button_nav = None;
+            // The anchor is up: the next drag starts in the anchor's own gear (pan).
+            crate::nav_extras::chord_reset(app);
             None
         }
     };
