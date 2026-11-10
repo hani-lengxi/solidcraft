@@ -1,0 +1,9 @@
+[package]
+name = "solidcraft-nav-extras"
+description = "Standalone navigation extensions: the two-button chord ladder behind the CATIA mouse preset, kept free of UI types so it can be tested and reused without a window"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
